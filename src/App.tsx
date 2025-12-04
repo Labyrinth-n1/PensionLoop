@@ -4,7 +4,7 @@ import { Login } from './components/auth/Login';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Dashboard } from './components/dashboard/Dashboard';
-import { RetraitesList } from './components/retraites/RetraitesList';
+import { RetraitesList } from './components/Retraites/RetraitesList';
 import { Paiements } from './components/paiements/Paiements';
 import { Historique } from './components/historique/Historique';
 import { Parametres } from './components/parametres/Parametres';

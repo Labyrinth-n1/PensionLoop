@@ -3,14 +3,16 @@ import { X } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   title?: string;
   children: React.ReactNode;
   width?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   showClose?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, width = 'md', showClose = true }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, width, size = 'md', showClose = true }: ModalProps) {
+  const modalSize = width || size;
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -35,18 +37,18 @@ export function Modal({ isOpen, onClose, title, children, width = 'md', showClos
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 animate-[fadeIn_200ms_ease-in]"
-        onClick={onClose}
+        onClick={onClose ? onClose : undefined}
       />
       
       {/* Modal */}
-      <div className={`relative bg-white rounded-lg shadow-lg-custom ${widthClasses[width]} w-full mx-4 max-h-[90vh] overflow-auto animate-[scaleIn_200ms_ease-out]`}>
+      <div className={`relative bg-white rounded-lg shadow-lg-custom ${widthClasses[modalSize]} w-full mx-4 max-h-[90vh] overflow-auto animate-[scaleIn_200ms_ease-out]`}>
         {title && (
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2>{title}</h2>
-            {showClose && (
-              <button 
+            {showClose && onClose && (
+              <button
                 onClick={onClose}
                 className="p-1 hover:bg-gray-100 rounded-md transition-colors"
               >

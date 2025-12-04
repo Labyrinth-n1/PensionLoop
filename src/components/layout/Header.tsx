@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Bell, ChevronDown } from 'lucide-react';
 
 export function Header() {
@@ -28,6 +28,7 @@ export function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-4">
+
           {/* Notifications */}
           <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <Bell className="w-5 h-5 text-gray-600" />

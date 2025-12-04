@@ -1,13 +1,51 @@
-import React, { useState } from 'react';
-import { Download, FileText, FileSpreadsheet, Filter, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Download, Filter, Calendar, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '../shared/Button';
-import { mockTransactions } from '../../data/mockData';
 import { Modal } from '../shared/Modal';
+import { paymentService, Transaction } from '../../services/api';
 
 export function Historique() {
-  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({
+    status: 'all',
+    type: 'all',
+    startDate: '',
+    endDate: ''
+  });
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await paymentService.getTransactionHistory({
+        page,
+        limit: 20,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        type: filters.type !== 'all' ? filters.type : undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined
+      });
+      setTransactions(response.data || []);
+      setTotalPages(response.totalPages || 1);
+    } catch (err) {
+      console.error('Erreur lors du chargement des transactions:', err);
+      setError('Impossible de charger l\'historique. Le backend n\'est peut-être pas disponible.');
+      setTransactions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, filters]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -95,91 +133,142 @@ export function Historique() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-md-custom overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-gray-600">Date & Heure</th>
-                <th className="px-6 py-3 text-left text-gray-600">ID Transaction</th>
-                <th className="px-6 py-3 text-left text-gray-600">Retraité</th>
-                <th className="px-6 py-3 text-left text-gray-600">Montant</th>
-                <th className="px-6 py-3 text-left text-gray-600">Type</th>
-                <th className="px-6 py-3 text-left text-gray-600">Référence</th>
-                <th className="px-6 py-3 text-left text-gray-600">Statut</th>
-                <th className="px-6 py-3 text-left text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {mockTransactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-sm">
-                    <div>
-                      <p>{transaction.date}</p>
-                      <p className="text-gray-500">{transaction.heure}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{transaction.id}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${transaction.retaiteName}`}
-                        alt={transaction.retaiteName}
-                        className="w-8 h-8 rounded-full"
-                      />
-                      <span className="text-sm">{transaction.retaiteName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {transaction.montant.toLocaleString()} FCFA
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex px-3 py-1 rounded-full text-sm bg-blue-100 text-[#1E40AF]">
-                      {transaction.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{transaction.reference}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-sm ${getStatusBadge(transaction.statut)}`}>
-                      {transaction.statut}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => handleViewDetail(transaction)}
-                      className="text-[#1E40AF] hover:underline text-sm"
-                    >
-                      Voir détails
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-white rounded-lg shadow-md-custom p-12 text-center">
+          <RefreshCw className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
+          <p className="text-gray-600">Chargement des transactions...</p>
         </div>
+      )}
 
-        {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Afficher:</span>
-            <select className="px-3 py-1 border border-gray-300 rounded-md text-sm">
-              <option>20</option>
-              <option>50</option>
-              <option>100</option>
-            </select>
-            <span className="text-sm text-gray-600">par page</span>
+      {/* Error State */}
+      {error && !isLoading && (
+        <div className="bg-white rounded-lg shadow-md-custom p-8">
+          <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-lg">
+            <AlertTriangle className="w-6 h-6 text-orange-600" />
+            <div>
+              <p className="font-medium text-orange-800">Backend non disponible</p>
+              <p className="text-sm text-orange-700">{error}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Affichage de 1-5 sur 5,678 transactions</span>
-            <div className="flex gap-1">
-              <button className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">1</button>
-              <button className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">2</button>
-              <button className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50">3</button>
+          <div className="mt-4 text-center">
+            <Button onClick={fetchTransactions} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />Réessayer
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      {!isLoading && !error && (
+        <div className="bg-white rounded-lg shadow-md-custom overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-gray-600">Date & Heure</th>
+                  <th className="px-6 py-3 text-left text-gray-600">ID Transaction</th>
+                  <th className="px-6 py-3 text-left text-gray-600">Retraité</th>
+                  <th className="px-6 py-3 text-left text-gray-600">Montant</th>
+                  <th className="px-6 py-3 text-left text-gray-600">Type</th>
+                  <th className="px-6 py-3 text-left text-gray-600">Référence</th>
+                  <th className="px-6 py-3 text-left text-gray-600">Statut</th>
+                  <th className="px-6 py-3 text-left text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      Aucune transaction trouvée. Importez un fichier CSV pour commencer.
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 text-sm">
+                        <div>
+                          <p>{new Date(transaction.dateHeure).toLocaleDateString('fr-FR')}</p>
+                          <p className="text-gray-500">{new Date(transaction.dateHeure).toLocaleTimeString('fr-FR')}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{transaction.id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${transaction.retraiteName}`}
+                            alt={transaction.retraiteName}
+                            className="w-8 h-8 rounded-full"
+                          />
+                          <span className="text-sm">{transaction.retraiteName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {transaction.montant.toLocaleString()} FCFA
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex px-3 py-1 rounded-full text-sm bg-blue-100 text-[#1E40AF]">
+                          {transaction.type === 'banque' ? 'Banque' : 'Mobile Money'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{transaction.reference}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-3 py-1 rounded-full text-sm ${getStatusBadge(
+                          transaction.statut === 'completed' || transaction.statut === 'reussi' ? 'Réussi' :
+                          transaction.statut === 'failed' || transaction.statut === 'echoue' ? 'Échoué' : 'En cours'
+                        )}`}>
+                          {transaction.statut === 'completed' || transaction.statut === 'reussi' ? 'Réussi' :
+                           transaction.statut === 'failed' || transaction.statut === 'echoue' ? 'Échoué' : 'En cours'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleViewDetail(transaction)}
+                          className="text-[#1E40AF] hover:underline text-sm"
+                        >
+                          Voir détails
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Afficher:</span>
+              <select className="px-3 py-1 border border-gray-300 rounded-md text-sm">
+                <option>20</option>
+                <option>50</option>
+                <option>100</option>
+              </select>
+              <span className="text-sm text-gray-600">par page</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Page {page} sur {totalPages}</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Précédent
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Suivant
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Transaction Detail Modal */}
       {showDetail && selectedTransaction && (
@@ -196,21 +285,17 @@ export function Historique() {
                       <p className="font-mono">{selectedTransaction.id}</p>
                     </div>
                     <div>
-                      <p className="text-small text-gray-600">Date</p>
-                      <p>{selectedTransaction.date}</p>
-                    </div>
-                    <div>
-                      <p className="text-small text-gray-600">Heure</p>
-                      <p>{selectedTransaction.heure}</p>
+                      <p className="text-small text-gray-600">Date & Heure</p>
+                      <p>{new Date(selectedTransaction.dateHeure).toLocaleString('fr-FR')}</p>
                     </div>
                     <div>
                       <p className="text-small text-gray-600">Type</p>
                       <span className="inline-flex px-3 py-1 rounded-full text-sm bg-blue-100 text-[#1E40AF]">
-                        {selectedTransaction.type}
+                        {selectedTransaction.type === 'banque' ? 'Banque' : 'Mobile Money'}
                       </span>
                     </div>
                     <div>
-                      <p className="text-small text-gray-600">Référence externe</p>
+                      <p className="text-small text-gray-600">Référence</p>
                       <p className="font-mono text-sm">{selectedTransaction.reference}</p>
                     </div>
                   </div>
@@ -219,13 +304,13 @@ export function Historique() {
                 <div>
                   <h3 className="mb-3">Bénéficiaire</h3>
                   <div className="flex items-center gap-3 mb-3">
-                    <img 
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedTransaction.retaiteName}`}
-                      alt={selectedTransaction.retaiteName}
+                    <img
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedTransaction.retraiteName}`}
+                      alt={selectedTransaction.retraiteName}
                       className="w-12 h-12 rounded-full"
                     />
                     <div>
-                      <p>{selectedTransaction.retaiteName}</p>
+                      <p>{selectedTransaction.retraiteName}</p>
                       <p className="text-sm text-gray-600">{selectedTransaction.retraiteId}</p>
                     </div>
                   </div>
@@ -246,7 +331,7 @@ export function Historique() {
                       <span>{selectedTransaction.frais.toLocaleString()} FCFA</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-blue-200">
-                      <span>Total débité</span>
+                      <span>Total</span>
                       <span className="text-xl text-[#1E40AF]">
                         {(selectedTransaction.montant + selectedTransaction.frais).toLocaleString()} FCFA
                       </span>
@@ -256,35 +341,23 @@ export function Historique() {
 
                 <div>
                   <h3 className="mb-3">Statut</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#059669] rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm">Initié</p>
-                        <p className="text-small text-gray-500">14:35:00</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#059669] rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm">Validé</p>
-                        <p className="text-small text-gray-500">14:35:05</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#059669] rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm">En Traitement</p>
-                        <p className="text-small text-gray-500">14:35:10</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#059669] rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm">Complété</p>
-                        <p className="text-small text-gray-500">14:35:42</p>
-                      </div>
-                    </div>
+                  <div className={`p-4 rounded-lg ${
+                    selectedTransaction.statut === 'completed' || selectedTransaction.statut === 'reussi'
+                      ? 'bg-green-50'
+                      : selectedTransaction.statut === 'failed' || selectedTransaction.statut === 'echoue'
+                      ? 'bg-red-50'
+                      : 'bg-orange-50'
+                  }`}>
+                    <span className={`inline-flex px-3 py-1 rounded-full text-sm ${getStatusBadge(
+                      selectedTransaction.statut === 'completed' || selectedTransaction.statut === 'reussi' ? 'Réussi' :
+                      selectedTransaction.statut === 'failed' || selectedTransaction.statut === 'echoue' ? 'Échoué' : 'En cours'
+                    )}`}>
+                      {selectedTransaction.statut === 'completed' || selectedTransaction.statut === 'reussi' ? 'Réussi' :
+                       selectedTransaction.statut === 'failed' || selectedTransaction.statut === 'echoue' ? 'Échoué' : 'En cours'}
+                    </span>
+                    {selectedTransaction.errorMessage && (
+                      <p className="mt-2 text-sm text-red-600">{selectedTransaction.errorMessage}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -292,10 +365,6 @@ export function Historique() {
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-              <Button variant="secondary">
-                <FileText className="w-4 h-4" />
-                Télécharger Reçu PDF
-              </Button>
               <Button variant="primary" onClick={() => setShowDetail(false)}>
                 Fermer
               </Button>

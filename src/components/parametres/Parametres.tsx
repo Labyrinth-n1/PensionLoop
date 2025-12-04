@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, CreditCard, Bell, Shield, Settings as SettingsIcon, Save } from 'lucide-react';
+import { Users, Bell, Shield, Save } from 'lucide-react';
 import { Button } from '../shared/Button';
 import { Input } from '../shared/Input';
 
@@ -8,7 +8,6 @@ export function Parametres() {
 
   const tabs = [
     { id: 'users', label: 'Utilisateurs', icon: Users },
-    { id: 'fintechs', label: 'Fintechs', icon: CreditCard },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Sécurité', icon: Shield }
   ];
@@ -120,71 +119,7 @@ export function Parametres() {
         </div>
       )}
 
-      {/* Fintechs Tab */}
-      {activeTab === 'fintechs' && (
-        <div className="space-y-6">
-          <p className="text-gray-600">Configurez les opérateurs de paiement Mobile Money disponibles pour les retraités</p>
-
-          {/* Fintech Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { name: 'MTN Mobile Money', status: 'Actif', fees: '1.5%', limit: '500,000', active: true },
-              { name: 'Moov Money', status: 'Actif', fees: '1.5%', limit: '500,000', active: true },
-              { name: 'Flooz', status: 'Inactif', fees: '1.5%', limit: '500,000', active: false }
-            ].map((fintech, index) => (
-              <div key={index} className="bg-white rounded-lg p-6 shadow-md-custom">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center text-white text-xl">
-                    {fintech.name.charAt(0)}
-                  </div>
-                  <span className={`inline-flex px-3 py-1 rounded-full text-sm ${
-                    fintech.active ? 'bg-green-100 text-[#059669]' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    ● {fintech.status}
-                  </span>
-                </div>
-                <h3 className="mb-4">{fintech.name}</h3>
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">API Key</span>
-                    <span className="font-mono">••••••••1234</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Frais</span>
-                    <span>{fintech.fees}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Limite</span>
-                    <span>{fintech.limit} FCFA</span>
-                  </div>
-                </div>
-                {fintech.active ? (
-                  <Button variant="secondary" size="sm" className="w-full">
-                    Configurer
-                  </Button>
-                ) : (
-                  <Button variant="primary" size="sm" className="w-full">
-                    Activer cet opérateur
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Bank Configuration */}
-          <div className="bg-white rounded-lg p-6 shadow-md-custom">
-            <h3 className="mb-4">Virements Bancaires</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="SWIFT/BIC" placeholder="BENIN123" />
-              <Input label="Compte principal" placeholder="BJ123..." />
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button variant="secondary">Configurer</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
+  
       {/* Notifications Tab */}
       {activeTab === 'notifications' && (
         <div className="space-y-6">

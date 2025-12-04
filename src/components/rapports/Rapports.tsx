@@ -1,13 +1,44 @@
-import React, { useState } from 'react';
-import { TrendingUp, DollarSign, Users, FileText, Download } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { TrendingUp, DollarSign, Users, FileText, Download, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '../shared/Button';
-import { 
+import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { paymentService, dashboardService } from '../../services/api';
 
 export function Rapports() {
   const [period, setPeriod] = useState('month');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fonction pour télécharger un rapport
+  const handleDownloadReport = async (format: 'pdf' | 'excel' | 'csv') => {
+    setIsDownloading(true);
+    try {
+      const blob = await paymentService.downloadReport({
+        format,
+        period,
+        includeDetails: true
+      });
+
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapport-pensions-${period}-${new Date().toISOString().split('T')[0]}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Erreur téléchargement rapport:', err);
+      setError('Impossible de télécharger le rapport. Le backend n\'est pas disponible.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const evolutionData = [
     { mois: 'Jan', total: 820, transactions: 2400 },
@@ -315,26 +346,65 @@ export function Rapports() {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-orange-400 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-orange-800">Attention</p>
+              <p className="text-sm text-orange-700">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-orange-500 hover:text-orange-700"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Export Section */}
       <div className="bg-white rounded-lg p-6 shadow-md-custom">
-        <h3 className="mb-4">Exporter les Données</h3>
+        <h3 className="mb-4">Générer et Exporter les Rapports</h3>
         <p className="text-gray-600 mb-4">
-          Téléchargez les rapports et données analytiques dans le format de votre choix
+          Téléchargez les rapports et données analytiques dans le format de votre choix.
+          Les rapports sont générés à partir des données du backend.
         </p>
-        <div className="flex gap-3">
-          <Button variant="primary">
-            <Download className="w-4 h-4" />
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="primary"
+            onClick={() => handleDownloadReport('pdf')}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
             Rapport Complet PDF
           </Button>
-          <Button variant="secondary">
+          <Button
+            variant="secondary"
+            onClick={() => handleDownloadReport('excel')}
+            disabled={isDownloading}
+          >
             <Download className="w-4 h-4" />
             Données Brutes Excel
           </Button>
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => handleDownloadReport('csv')}
+            disabled={isDownloading}
+          >
             <Download className="w-4 h-4" />
-            Graphiques PNG
+            Export CSV
           </Button>
         </div>
+        <p className="text-sm text-gray-500 mt-4">
+          Note: Les rapports sont générés en temps réel à partir des données du serveur.
+        </p>
       </div>
     </div>
   );
